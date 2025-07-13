@@ -79,9 +79,9 @@ export function PaymentsSection() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "paid":
-        return "default"
+        return "success"
       case "pending":
-        return "outline"
+        return "warning"
       case "overdue":
         return "destructive"
       default:

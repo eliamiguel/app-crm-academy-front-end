@@ -21,7 +21,7 @@ export function StudentDetails({ student }: StudentDetailsProps) {
       case "SUSPENDED":
         return "destructive"
       case "PENDING":
-        return "outline"
+        return "warning"
       default:
         return "secondary"
     }

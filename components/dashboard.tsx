@@ -20,7 +20,7 @@ export function Dashboard() {
     },
     {
       title: "Receita Mensal",
-      value: `R$ ${data?.revenue.total?.toFixed(2)}`,
+      value: `R$ ${Number(data?.revenue.total || 0).toFixed(2)}`,
       description: "+8% em relação ao mês passado",
       icon: DollarSign,
       color: "text-green-600",

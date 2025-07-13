@@ -123,7 +123,7 @@ export function StudentsSection() {
       case "SUSPENDED":
         return "destructive"
       case "PENDING":
-        return "outline"
+        return "warning"
       default:
         return "secondary"
     }

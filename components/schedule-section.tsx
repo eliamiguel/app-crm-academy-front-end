@@ -1,102 +1,178 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useRouter } from "next/navigation"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, User, Plus } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Calendar } from "@/components/ui/calendar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-interface Appointment {
-  id: string
-  studentName: string
-  date: string
-  time: string
-  type: "personal" | "group" | "evaluation"
-  status: "scheduled" | "completed" | "cancelled"
-  trainer: string
-  notes?: string
-}
+import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Plus, Search, Edit, Eye, CheckCircle, XCircle, Calendar as CalendarIcon } from "lucide-react"
+import { format, addDays, subDays } from "date-fns"
+import { ptBR } from "date-fns/locale"
+import { useGetAppointments, useGetAllAppointments, useCreateAppointment, useUpdateAppointment } from "@/lib/appointmentService"
+import { useGetStudents } from "@/lib/studentsService"
+import { useGetInstructors } from "@/lib/userService"
+import { Appointment, IInstructor, IStudent } from "@/styles/styles"
 
 export function ScheduleSection() {
-  const [appointments] = useState<Appointment[]>([
-    {
-      id: "1",
-      studentName: "Maria Silva",
-      date: "2024-01-15",
-      time: "09:00",
-      type: "personal",
-      status: "scheduled",
-      trainer: "Carlos Personal",
-      notes: "Treino de pernas",
-    },
-    {
-      id: "2",
-      studentName: "João Santos",
-      date: "2024-01-15",
-      time: "10:30",
-      type: "evaluation",
-      status: "completed",
-      trainer: "Ana Nutricionista",
-    },
-    {
-      id: "3",
-      studentName: "Ana Costa",
-      date: "2024-01-16",
-      time: "14:00",
-      type: "group",
-      status: "scheduled",
-      trainer: "Pedro Instrutor",
-      notes: "Aula de spinning",
-    },
-    {
-      id: "4",
-      studentName: "Pedro Lima",
-      date: "2024-01-16",
-      time: "16:00",
-      type: "personal",
-      status: "cancelled",
-      trainer: "Carlos Personal",
-    },
-  ])
+  const router = useRouter()
+  const [searchTerm, setSearchTerm] = useState("")
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [formData, setFormData] = useState({
+    title: "",
+    studentId: "",
+    instructorId: "",
+    type: "PERSONAL_TRAINING" as "PERSONAL_TRAINING" | "GROUP_CLASS" | "EVALUATION" | "CONSULTATION",
+    startTime: "",
+    endTime: "",
+    notes: "",
+  })
 
-  const [filterDate, setFilterDate] = useState("all")
-  const [filterType, setFilterType] = useState("all")
+  // Buscar agendamentos da semana inteira (3 dias antes e 3 dias depois da data selecionada)
+  const startDate = subDays(selectedDate, 3)
+  const endDate = addDays(selectedDate, 3)
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "personal":
-        return "default"
-      case "group":
-        return "secondary"
-      case "evaluation":
-        return "outline"
-      default:
-        return "secondary"
+  const { data: appointmentsData, isLoading } = useGetAppointments({
+    startDate: format(startDate, "yyyy-MM-dd"),
+    endDate: format(endDate, "yyyy-MM-dd"),
+  })
+  
+  // Buscar todos os agendamentos como fallback
+  const { data: allAppointmentsData, isLoading: isLoadingAll } = useGetAllAppointments()
+  const { data: students } = useGetStudents()
+  const { data: instructors } = useGetInstructors()
+  const createAppointment = useCreateAppointment()
+  const updateAppointment = useUpdateAppointment()
+
+  const handleOpenDialog = (appointment?: Appointment) => {
+    if (appointment) {
+      setSelectedAppointment(appointment)
+      setFormData({
+        title: appointment.title,
+        studentId: appointment.student.id,
+        instructorId: appointment.instructor.id,
+        type: appointment.type,
+        startTime: appointment.startTime,
+        endTime: appointment.endTime,
+        notes: appointment.notes || "",
+      })
+    } else {
+      setSelectedAppointment(null)
+      setFormData({
+        title: "",
+        studentId: "",
+        instructorId: "",
+        type: "PERSONAL_TRAINING",
+        startTime: "",
+        endTime: "",
+        notes: "",
+      })
+    }
+    setIsDialogOpen(true)
+  }
+
+  const handleOpenDetails = (appointment: Appointment) => {
+    setSelectedAppointment(appointment)
+    setIsDetailsDialogOpen(true)
+  }
+
+  const handleSubmit = async () => {
+    try {
+      // Validação dos campos obrigatórios
+      if (!formData.title.trim()) {
+        throw new Error("O título é obrigatório")
+      }
+      if (!formData.studentId) {
+        throw new Error("Selecione um aluno")
+      }
+      if (!formData.instructorId) {
+        throw new Error("Selecione um instrutor")
+      }
+      if (!formData.startTime) {
+        throw new Error("Selecione o horário de início")
+      }
+      if (!formData.endTime) {
+        throw new Error("Selecione o horário de fim")
+      }
+
+      // Validação das datas
+      const startTime = new Date(formData.startTime)
+      const endTime = new Date(formData.endTime)
+
+      if (isNaN(startTime.getTime())) {
+        throw new Error("Data de início inválida")
+      }
+      if (isNaN(endTime.getTime())) {
+        throw new Error("Data de fim inválida")
+      }
+      if (endTime <= startTime) {
+        throw new Error("O horário de fim deve ser maior que o horário de início")
+      }
+
+      console.log("Dados do formulário:", formData) // Debug
+
+      if (selectedAppointment) {
+        await updateAppointment.mutateAsync({
+          id: selectedAppointment.id,
+          ...formData,
+        })
+      } else {
+        await createAppointment.mutateAsync(formData)
+      }
+      setIsDialogOpen(false)
+      setFormData({
+        title: "",
+        studentId: "",
+        instructorId: "",
+        type: "PERSONAL_TRAINING",
+        startTime: "",
+        endTime: "",
+        notes: "",
+      })
+    } catch (error) {
+      console.error("Erro ao salvar agendamento:", error)
+      // Exibe o erro para o usuário
+      alert(error instanceof Error ? error.message : "Erro ao salvar agendamento")
     }
   }
 
-  const getTypeText = (type: string) => {
-    switch (type) {
-      case "personal":
-        return "Personal"
-      case "group":
-        return "Grupo"
-      case "evaluation":
-        return "Avaliação"
-      default:
-        return type
+  const handleMarkStatus = async (appointmentId: string, status: "COMPLETED" | "NO_SHOW") => {
+    try {
+      await updateAppointment.mutateAsync({
+        id: appointmentId,
+        status,
+      })
+      setIsDetailsDialogOpen(false)
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error)
     }
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "scheduled":
-        return "default"
-      case "completed":
-        return "secondary"
-      case "cancelled":
+      case "SCHEDULED":
+        return "warning"
+      case "COMPLETED":
+        return "success"
+      case "CANCELLED":
         return "destructive"
+      case "NO_SHOW":
+        return "secondary"
       default:
         return "secondary"
     }
@@ -104,159 +180,391 @@ export function ScheduleSection() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "scheduled":
+      case "SCHEDULED":
         return "Agendado"
-      case "completed":
+      case "COMPLETED":
         return "Concluído"
-      case "cancelled":
+      case "CANCELLED":
         return "Cancelado"
+      case "NO_SHOW":
+        return "Não Compareceu"
       default:
         return status
     }
   }
 
-  const todayAppointments = appointments.filter((apt) => apt.date === new Date().toISOString().split("T")[0]).length
+  const getTypeText = (type: string) => {
+    switch (type) {
+      case "PERSONAL_TRAINING":
+        return "Personal Training"
+      case "GROUP_CLASS":
+        return "Aula em Grupo"
+      case "EVALUATION":
+        return "Avaliação"
+      case "CONSULTATION":
+        return "Consulta"
+      default:
+        return type
+    }
+  }
 
-  const weekAppointments = appointments.filter((apt) => {
-    const aptDate = new Date(apt.date)
-    const today = new Date()
-    const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-    return aptDate >= today && aptDate <= weekFromNow
-  }).length
+  // Usar dados filtrados por data ou todos os agendamentos se não houver filtrados
+  const rawAppointments = appointmentsData?.appointments?.length > 0 
+    ? appointmentsData.appointments 
+    : allAppointmentsData?.appointments || []
+
+  const filteredAppointments = rawAppointments.filter(
+    (appointment: Appointment) =>
+      appointment.student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      appointment.title.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+
+  if (isLoading && isLoadingAll) {
+    return <div>Carregando agendamentos...</div>
+  }
+  
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Agendamentos</h1>
-          <p className="text-muted-foreground">Gerencie aulas e treinos agendados</p>
+          <p className="text-muted-foreground">
+            Gerencie os agendamentos da academia ({filteredAppointments.length} encontrados)
+          </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Agendamento
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Agendamento
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedAppointment ? "Editar Agendamento" : "Novo Agendamento"}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedAppointment
+                  ? "Atualize as informações do agendamento"
+                  : "Preencha as informações para criar um novo agendamento"}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Título</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="Ex: Treino de Força"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="type">Tipo</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value: "PERSONAL_TRAINING" | "GROUP_CLASS" | "EVALUATION" | "CONSULTATION") =>
+                      setFormData({ ...formData, type: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PERSONAL_TRAINING">Personal Training</SelectItem>
+                      <SelectItem value="GROUP_CLASS">Aula em Grupo</SelectItem>
+                      <SelectItem value="EVALUATION">Avaliação</SelectItem>
+                      <SelectItem value="CONSULTATION">Consulta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startTime">Horário Início</Label>
+                  <Input
+                    id="startTime"
+                    type="datetime-local"
+                    value={formData.startTime}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endTime">Horário Fim</Label>
+                  <Input
+                    id="endTime"
+                    type="datetime-local"
+                    value={formData.endTime}
+                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="student">Aluno</Label>
+                  <Select
+                    value={formData.studentId}
+                    onValueChange={(value) => setFormData({ ...formData, studentId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o aluno" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {students?.map((student: IStudent) => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="instructor">Instrutor</Label>
+                  <Select
+                    value={formData.instructorId}
+                    onValueChange={(value) => setFormData({ ...formData, instructorId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o instrutor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instructors?.map((instructor: IInstructor) => (
+                        <SelectItem key={instructor.id} value={instructor.id}>
+                          {instructor.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Observações</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Adicione observações importantes"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={
+                  (selectedAppointment ? updateAppointment.isPending : createAppointment.isPending) ||
+                  !formData.title ||
+                  !formData.studentId ||
+                  !formData.instructorId ||
+                  !formData.startTime ||
+                  !formData.endTime
+                }
+              >
+                {selectedAppointment 
+                  ? (updateAppointment.isPending ? "Salvando..." : "Salvar Alterações")
+                  : (createAppointment.isPending ? "Criando..." : "Criar Agendamento")
+                }
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Search and Calendar */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hoje</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{todayAppointments}</div>
-            <p className="text-xs text-muted-foreground">Agendamentos para hoje</p>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar agendamentos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <p>Período: {format(startDate, "dd/MM/yyyy")} a {format(endDate, "dd/MM/yyyy")}</p>
+                <p>Total de agendamentos: {rawAppointments.length}</p>
+                <p>Agendamentos exibidos: {filteredAppointments.length}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Esta Semana</CardTitle>
-            <Clock className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{weekAppointments}</div>
-            <p className="text-xs text-muted-foreground">Próximos 7 dias</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Presença</CardTitle>
-            <User className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">85%</div>
-            <p className="text-xs text-muted-foreground">Últimos 30 dias</p>
+          <CardContent className="pt-6">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              className="rounded-md border"
+              locale={ptBR}
+            />
           </CardContent>
         </Card>
       </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <Select value={filterDate} onValueChange={setFilterDate}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filtrar por data" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as datas</SelectItem>
-                <SelectItem value="today">Hoje</SelectItem>
-                <SelectItem value="week">Esta semana</SelectItem>
-                <SelectItem value="month">Este mês</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filtrar por tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os tipos</SelectItem>
-                <SelectItem value="personal">Personal</SelectItem>
-                <SelectItem value="group">Grupo</SelectItem>
-                <SelectItem value="evaluation">Avaliação</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Appointments List */}
       <div className="grid gap-4">
-        {appointments.map((appointment) => (
-          <Card key={appointment.id}>
+        {filteredAppointments.length === 0 ? (
+          <Card>
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                    <Calendar className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{appointment.studentName}</h3>
-                    <div className="flex items-center gap-4 mt-1">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(appointment.date).toLocaleDateString("pt-BR")}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">{appointment.time}</span>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">Instrutor: {appointment.trainer}</p>
-                    {appointment.notes && <p className="text-sm text-muted-foreground">Obs: {appointment.notes}</p>}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right space-y-2">
-                    <Badge variant={getTypeColor(appointment.type)}>{getTypeText(appointment.type)}</Badge>
-                    <div>
-                      <Badge variant={getStatusColor(appointment.status)}>{getStatusText(appointment.status)}</Badge>
-                    </div>
-                  </div>
-                  <div className="flex flex-col space-y-2">
-                    {appointment.status === "scheduled" && (
-                      <>
-                        <Button size="sm">Marcar Presença</Button>
-                        <Button variant="outline" size="sm">
-                          Reagendar
-                        </Button>
-                      </>
-                    )}
-                    <Button variant="outline" size="sm">
-                      Ver Detalhes
-                    </Button>
-                  </div>
-                </div>
+              <div className="text-center py-8">
+                <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Nenhum agendamento encontrado
+                </h3>
+                <p className="text-gray-500 mb-4">
+                  {searchTerm 
+                    ? `Não há agendamentos que correspondam à busca "${searchTerm}"`
+                    : "Não há agendamentos para o período selecionado"}
+                </p>
+                <Button onClick={() => handleOpenDialog()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeiro Agendamento
+                </Button>
               </div>
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          filteredAppointments.map((appointment: Appointment) => (
+            <Card key={appointment.id}>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <CalendarIcon className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{appointment.title}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(appointment.startTime), "PPp", { locale: ptBR })}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Aluno: {appointment.student.name}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                      <Badge variant={getStatusColor(appointment.status)}>
+                        {getStatusText(appointment.status)}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {getTypeText(appointment.type)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Instrutor: {appointment.instructor.name}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenDetails(appointment)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenDialog(appointment)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
+
+      {/* Details Dialog */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Agendamento</DialogTitle>
+          </DialogHeader>
+          {selectedAppointment && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Título</h4>
+                  <p>{selectedAppointment.title}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Status</h4>
+                  <Badge variant={getStatusColor(selectedAppointment.status)}>
+                    {getStatusText(selectedAppointment.status)}
+                  </Badge>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Aluno</h4>
+                  <p>{selectedAppointment.student.name}</p>
+                  <p className="text-sm text-muted-foreground">{selectedAppointment.student.email}</p>
+                  {selectedAppointment.student.phone && (
+                    <p className="text-sm text-muted-foreground">
+                      {selectedAppointment.student.phone}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <h4 className="font-semibold">Instrutor</h4>
+                  <p>{selectedAppointment.instructor.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedAppointment.instructor.email}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Início</h4>
+                  <p>
+                    {format(new Date(selectedAppointment.startTime), "PPp", { locale: ptBR })}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Fim</h4>
+                  <p>
+                    {format(new Date(selectedAppointment.endTime), "PPp", { locale: ptBR })}
+                  </p>
+                </div>
+              </div>
+              {selectedAppointment.notes && (
+                <div>
+                  <h4 className="font-semibold">Observações</h4>
+                  <p>{selectedAppointment.notes}</p>
+                </div>
+              )}
+              {selectedAppointment.status === "SCHEDULED" && (
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleMarkStatus(selectedAppointment.id, "NO_SHOW")}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Não Compareceu
+                  </Button>
+                  <Button onClick={() => handleMarkStatus(selectedAppointment.id, "COMPLETED")}>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Marcar Presença
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

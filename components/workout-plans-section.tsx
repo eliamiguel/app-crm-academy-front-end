@@ -143,7 +143,7 @@ export function WorkoutPlansSection() {
       case "active":
         return "default"
       case "completed":
-        return "secondary"
+        return "success"
       case "paused":
         return "outline"
       default:
