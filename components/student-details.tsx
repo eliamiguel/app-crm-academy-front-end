@@ -2,12 +2,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Student } from "@/styles"
+import { IStudent } from "@/styles/styles"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 
 interface StudentDetailsProps {
-  student: Student
+  student: IStudent
 }
 
 export function StudentDetails({ student }: StudentDetailsProps) {

@@ -13,33 +13,34 @@ export function Dashboard() {
   const stats = [
     {
       title: "Total de Alunos",
-      value: data?.totalStudents,
+      value: data?.students.total,
       description: "+12% em relação ao mês passado",
       icon: Users,
       color: "text-blue-600",
     },
     {
       title: "Receita Mensal",
-      value: data?.monthlyRevenue,
+      value: `R$ ${data?.revenue.total?.toFixed(2)}`,
       description: "+8% em relação ao mês passado",
       icon: DollarSign,
       color: "text-green-600",
     },
     {
       title: "Aulas Agendadas",
-      value: data?.scheduledClasses,
+      value: data?.appointments.thisWeek,
       description: "Para esta semana",
       icon: Calendar,
       color: "text-purple-600",
     },
     {
       title: "Frequência Média",
-        value: data?.averageAttendance,
-      description: "Últimos 30 dias",
+      value: `${(data?.appointments.thisWeek / data?.students.active || 0).toFixed(1)} aulas/aluno`,
+      description: "Com base em alunos ativos",
       icon: TrendingUp,
       color: "text-orange-600",
     },
   ]
+  
 
   const recentActivities = [
     { student: "Maria Silva", action: "Pagamento realizado", time: "2 horas atrás", type: "payment" },

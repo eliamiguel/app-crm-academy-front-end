@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Plus, Search, Edit, Eye } from "lucide-react"
-import { Student } from "@/styles"
+import { IStudent } from "@/styles/styles"
 import { useGetStudents, useCreateStudent, useUpdateStudent } from "@/lib/studentsService"
 
 export function StudentsSection() {
@@ -30,7 +30,7 @@ export function StudentsSection() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [selectedStudent, setSelectedStudent] = useState<IStudent | null>(null)
   const [formData, setFormData] = useState({
     id: "",
     name: "",
@@ -45,7 +45,7 @@ export function StudentsSection() {
     objectives: "",
   })
 
-  const handleOpenDialog = (student?: Student) => {
+  const handleOpenDialog = (student?: IStudent) => {
     if (student) {
       setIsEditing(true)
       setSelectedStudent(student)
@@ -109,7 +109,7 @@ export function StudentsSection() {
   }
 
   const filteredStudents = students?.filter(
-    (student: Student) =>
+    (student: IStudent) =>
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.email.toLowerCase().includes(searchTerm.toLowerCase()),
   )
@@ -321,7 +321,7 @@ export function StudentsSection() {
 
       {/* Students List */}
       <div className="grid gap-4">
-        {filteredStudents?.map((student: Student) => (
+        {filteredStudents?.map((student: IStudent) => (
           <Card key={student.id}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">

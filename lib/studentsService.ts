@@ -2,12 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import api from "../axios"
 import { toast } from "sonner"
 import { AxiosError } from "axios"
-import { Student } from "@/styles";
+import { IStudent } from "@/styles/styles";
 
 
 
 export const useGetStudents  = () => {
-    const { data, isLoading, isError, error, refetch } = useQuery<Student[]>({
+    const { data, isLoading, isError, error, refetch } = useQuery<IStudent[]>({
         queryKey: ['students'],
         queryFn: async () => await api.get('/students')
         .then((res)=>{
@@ -34,17 +34,17 @@ export const useGetStudents  = () => {
         medicalRestrictions?: string;
         objectives?: string;
       }) => {
-        console.log("data do aluno", data)
+       
             return await api.post(`/students`, data).then((res) => {
           return res.data;
         });
       },
       onSuccess: (data) => {
-        if (data.sucesso) {
-          toast.success(data.mensagem || "Aluno criado com sucesso.");
+        if (data.student && data.message) {
+          toast.success("Aluno criado com sucesso.");
           queryClient.invalidateQueries({ queryKey: ["students"] });
         } else {
-          toast.error(data.mensagem || "Erro ao criar aluno.");
+          toast.error("Erro ao criar aluno.");
         }
       },
       onError: (error: AxiosError<{ mensagem: string }>) => {
@@ -78,11 +78,11 @@ export const useGetStudents  = () => {
         });
       },
       onSuccess: (data) => {
-        if (data.sucesso) {
-          toast.success(data.mensagem || "Aluno atualizado com sucesso.");
+        if (data.student && data.message) {
+          toast.success("Aluno atualizado com sucesso.");
           queryClient.invalidateQueries({ queryKey: ["students"] });
         } else {
-          toast.error(data.mensagem || "Erro ao atualizar aluno.");
+          toast.error("Erro ao atualizar aluno.");
         }
       },
       onError: (error: AxiosError<{ mensagem: string }>) => {
@@ -95,7 +95,7 @@ export const useGetStudents  = () => {
   }
 
   export const useGetStudent = (id: string) => {
-    const { data, isLoading, isError, error } = useQuery<Student>({
+    const { data, isLoading, isError, error } = useQuery<IStudent>({
       queryKey: ['student', id],
       queryFn: async () => {
         const response = await api.get(`/students/${id}`);
