@@ -1,6 +1,8 @@
 "use client"
 
-import { Calendar, CreditCard, Dumbbell, Home, TrendingUp, Users, Bell, Activity } from "lucide-react"
+import { Calendar, CreditCard, Dumbbell, Home, TrendingUp, Users, Bell, Activity, LogOut } from "lucide-react"
+import { useRouter, usePathname } from "next/navigation"
+import { logout } from "@/lib/auth"
 
 import {
   Sidebar,
@@ -18,46 +20,52 @@ const menuItems = [
   {
     title: "Dashboard",
     icon: Home,
-    id: "dashboard",
+    path: "/",
   },
   {
     title: "Alunos",
     icon: Users,
-    id: "students",
+    path: "/students",
   },
   {
     title: "Pagamentos",
     icon: CreditCard,
-    id: "payments",
+    path: "/payments",
   },
   {
     title: "Agendamentos",
     icon: Calendar,
-    id: "schedule",
+    path: "/schedule",
   },
   {
     title: "Evolução",
     icon: TrendingUp,
-    id: "progress",
+    path: "/progress",
   },
   {
     title: "Planos de Treino",
     icon: Dumbbell,
-    id: "workout-plans",
+    path: "/workout-plans",
   },
   {
     title: "Notificações",
     icon: Bell,
-    id: "notifications",
+    path: "/notifications",
   },
 ]
 
-interface AppSidebarProps {
-  activeSection: string
-  setActiveSection: (section: string) => void
-}
+export function AppSidebar() {
+  const router = useRouter()
+  const pathname = usePathname()
 
-export function AppSidebar({ activeSection, setActiveSection }: AppSidebarProps) {
+  const handleLogout = () => {
+    logout()
+  }
+
+  const handleNavigation = (path: string) => {
+    router.push(path)
+  }
+
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
@@ -75,13 +83,30 @@ export function AppSidebar({ activeSection, setActiveSection }: AppSidebarProps)
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
-                <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton isActive={activeSection === item.id} onClick={() => setActiveSection(item.id)}>
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton 
+                    isActive={pathname === item.path} 
+                    onClick={() => handleNavigation(item.path)}
+                  >
                     <item.icon />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        {/* Botão de Logout separado */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={handleLogout} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                  <LogOut />
+                  <span>Sair</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
