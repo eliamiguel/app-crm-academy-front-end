@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,79 +18,111 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Plus, Search, Edit, Eye } from "lucide-react"
-
-interface Student {
-  id: string
-  name: string
-  email: string
-  phone: string
-  plan: string
-  status: "active" | "inactive" | "pending"
-  joinDate: string
-  objectives: string
-  medicalRestrictions: string
-}
+import { Student } from "@/styles"
+import { useGetStudents, useCreateStudent, useUpdateStudent } from "@/lib/studentsService"
 
 export function StudentsSection() {
-  const [students] = useState<Student[]>([
-    {
-      id: "1",
-      name: "Maria Silva",
-      email: "maria@email.com",
-      phone: "(11) 99999-9999",
-      plan: "Premium",
-      status: "active",
-      joinDate: "2024-01-15",
-      objectives: "Perda de peso e tonificação",
-      medicalRestrictions: "Problema no joelho direito",
-    },
-    {
-      id: "2",
-      name: "João Santos",
-      email: "joao@email.com",
-      phone: "(11) 88888-8888",
-      plan: "Básico",
-      status: "active",
-      joinDate: "2024-02-20",
-      objectives: "Ganho de massa muscular",
-      medicalRestrictions: "Nenhuma",
-    },
-    {
-      id: "3",
-      name: "Ana Costa",
-      email: "ana@email.com",
-      phone: "(11) 77777-7777",
-      plan: "Premium",
-      status: "pending",
-      joinDate: "2024-03-10",
-      objectives: "Condicionamento físico",
-      medicalRestrictions: "Hipertensão",
-    },
-  ])
-
+  const router = useRouter()
+  const { data: students, isLoading, isError, error, refetch } = useGetStudents()
+  const createStudent = useCreateStudent()
+  const updateStudent = useUpdateStudent()
+  
   const [searchTerm, setSearchTerm] = useState("")
-  const [newStudent, setNewStudent] = useState({
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [formData, setFormData] = useState({
+    id: "",
     name: "",
     email: "",
     phone: "",
-    plan: "",
-    objectives: "",
+    dateOfBirth: "",
+    gender: "",
+    address: "",
+    emergencyContact: "",
+    emergencyPhone: "",
     medicalRestrictions: "",
+    objectives: "",
   })
 
-  const filteredStudents = students.filter(
-    (student) =>
+  const handleOpenDialog = (student?: Student) => {
+    if (student) {
+      setIsEditing(true)
+      setSelectedStudent(student)
+      setFormData({
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        phone: student.phone || "",
+        dateOfBirth: student.dateOfBirth || "",
+        gender: student.gender || "",
+        address: student.address || "",
+        emergencyContact: student.emergencyContact || "",
+        emergencyPhone: student.emergencyPhone || "",
+        medicalRestrictions: student.medicalRestrictions || "",
+        objectives: student.objectives || "",
+      })
+    } else {
+      setIsEditing(false)
+      setSelectedStudent(null)
+      setFormData({
+        id: "",
+        name: "",
+        email: "",
+        phone: "",
+        dateOfBirth: "",
+        gender: "",
+        address: "",
+        emergencyContact: "",
+        emergencyPhone: "",
+        medicalRestrictions: "",
+        objectives: "",
+      })
+    }
+    setIsDialogOpen(true)
+  }
+
+  const handleSubmit = async () => {
+    try {
+      if (isEditing && selectedStudent) {
+        await updateStudent.mutateAsync(formData)
+      } else {
+        await createStudent.mutateAsync(formData)
+      }
+      setIsDialogOpen(false)
+      setFormData({
+        id: "",
+        name: "",
+        email: "",
+        phone: "",
+        dateOfBirth: "",
+        gender: "",
+        address: "",
+        emergencyContact: "",
+        emergencyPhone: "",
+        medicalRestrictions: "",
+        objectives: "",
+      })
+    } catch (error) {
+      console.error("Erro ao salvar aluno:", error)
+    }
+  }
+
+  const filteredStudents = students?.filter(
+    (student: Student) =>
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.email.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active":
+      case "ACTIVE":
         return "default"
-      case "inactive":
+      case "INACTIVE":
         return "secondary"
-      case "pending":
+      case "SUSPENDED":
+        return "destructive"
+      case "PENDING":
         return "outline"
       default:
         return "secondary"
@@ -98,17 +131,26 @@ export function StudentsSection() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "active":
+      case "ACTIVE":
         return "Ativo"
-      case "inactive":
+      case "INACTIVE":
         return "Inativo"
-      case "pending":
+      case "SUSPENDED":
+        return "Suspenso"
+      case "PENDING":
         return "Pendente"
       default:
         return status
     }
   }
 
+  if (isLoading) {
+    return <div>Carregando...</div>
+  }
+
+  if (isError) {
+    return <div>Erro ao carregar alunos</div>
+  }
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -116,17 +158,21 @@ export function StudentsSection() {
           <h1 className="text-3xl font-bold">Alunos</h1>
           <p className="text-muted-foreground">Gerencie o cadastro dos seus alunos</p>
         </div>
-        <Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => handleOpenDialog()}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Aluno
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Cadastrar Novo Aluno</DialogTitle>
-              <DialogDescription>Preencha as informações do aluno para criar o cadastro</DialogDescription>
+              <DialogTitle>{isEditing ? "Editar Aluno" : "Cadastrar Novo Aluno"}</DialogTitle>
+              <DialogDescription>
+                {isEditing
+                  ? "Atualize as informações do aluno conforme necessário"
+                  : "Preencha as informações do aluno para criar o cadastro"}
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
@@ -134,8 +180,8 @@ export function StudentsSection() {
                   <Label htmlFor="name">Nome Completo</Label>
                   <Input
                     id="name"
-                    value={newStudent.name}
-                    onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Digite o nome completo"
                   />
                 </div>
@@ -144,8 +190,8 @@ export function StudentsSection() {
                   <Input
                     id="email"
                     type="email"
-                    value={newStudent.email}
-                    onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="email@exemplo.com"
                   />
                 </div>
@@ -155,34 +201,74 @@ export function StudentsSection() {
                   <Label htmlFor="phone">Telefone</Label>
                   <Input
                     id="phone"
-                    value={newStudent.phone}
-                    onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="(11) 99999-9999"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="plan">Plano</Label>
+                  <Label htmlFor="dateOfBirth">Data de Nascimento</Label>
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Gênero</Label>
                   <Select
-                    value={newStudent.plan}
-                    onValueChange={(value) => setNewStudent({ ...newStudent, plan: value })}
+                    value={formData.gender}
+                    onValueChange={(value) => setFormData({ ...formData, gender: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o plano" />
+                      <SelectValue placeholder="Selecione o gênero" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="basico">Básico</SelectItem>
-                      <SelectItem value="premium">Premium</SelectItem>
-                      <SelectItem value="vip">VIP</SelectItem>
+                      <SelectItem value="MALE">Masculino</SelectItem>
+                      <SelectItem value="FEMALE">Feminino</SelectItem>
+                      <SelectItem value="OTHER">Outro</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Endereço</Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Endereço completo"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyContact">Contato de Emergência</Label>
+                  <Input
+                    id="emergencyContact"
+                    value={formData.emergencyContact}
+                    onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
+                    placeholder="Nome do contato"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyPhone">Telefone de Emergência</Label>
+                  <Input
+                    id="emergencyPhone"
+                    value={formData.emergencyPhone}
+                    onChange={(e) => setFormData({ ...formData, emergencyPhone: e.target.value })}
+                    placeholder="(11) 99999-9999"
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="objectives">Objetivos</Label>
                 <Textarea
                   id="objectives"
-                  value={newStudent.objectives}
-                  onChange={(e) => setNewStudent({ ...newStudent, objectives: e.target.value })}
+                  value={formData.objectives}
+                  onChange={(e) => setFormData({ ...formData, objectives: e.target.value })}
                   placeholder="Descreva os objetivos do aluno"
                 />
               </div>
@@ -190,15 +276,29 @@ export function StudentsSection() {
                 <Label htmlFor="restrictions">Restrições Médicas</Label>
                 <Textarea
                   id="restrictions"
-                  value={newStudent.medicalRestrictions}
-                  onChange={(e) => setNewStudent({ ...newStudent, medicalRestrictions: e.target.value })}
+                  value={formData.medicalRestrictions}
+                  onChange={(e) => setFormData({ ...formData, medicalRestrictions: e.target.value })}
                   placeholder="Informe restrições médicas ou digite 'Nenhuma'"
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline">Cancelar</Button>
-              <Button>Cadastrar Aluno</Button>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={
+                  (isEditing ? updateStudent.isPending : createStudent.isPending) || 
+                  !formData.name || 
+                  !formData.email
+                }
+              >
+                {isEditing 
+                  ? (updateStudent.isPending ? "Salvando..." : "Salvar Alterações")
+                  : (createStudent.isPending ? "Cadastrando..." : "Cadastrar Aluno")
+                }
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -221,7 +321,7 @@ export function StudentsSection() {
 
       {/* Students List */}
       <div className="grid gap-4">
-        {filteredStudents.map((student) => (
+        {filteredStudents?.map((student: Student) => (
           <Card key={student.id}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -244,16 +344,18 @@ export function StudentsSection() {
                 <div className="flex items-center space-x-4">
                   <div className="text-right">
                     <Badge variant={getStatusColor(student.status)}>{getStatusText(student.status)}</Badge>
-                    <p className="text-sm text-muted-foreground mt-1">Plano: {student.plan}</p>
+                    {student.objectives && (
+                      <p className="text-sm text-muted-foreground mt-1">Objetivos: {student.objectives}</p>
+                    )}
                     <p className="text-sm text-muted-foreground">
-                      Desde: {new Date(student.joinDate).toLocaleDateString("pt-BR")}
+                      Desde: {new Date(student.registrationDate || student.createdAt).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
                   <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/students/${student.id}`)}>
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => handleOpenDialog(student)}>
                       <Edit className="h-4 w-4" />
                     </Button>
                   </div>

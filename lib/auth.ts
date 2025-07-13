@@ -49,18 +49,12 @@ export const getAuthState = (): AuthState => {
 
 export const logout = () => {
   if (typeof window !== "undefined") {
-    console.log("🚪 Fazendo logout...")
-    
-    // Limpar todos os dados de autenticação
+   
     localStorage.removeItem("token")
     localStorage.removeItem("user")
     
-    // Limpar qualquer outro dado relacionado ao usuário
     sessionStorage.clear()
-    
-    console.log("🧹 Dados de autenticação removidos")
-    
-    // Redirecionar para a página de login
+  
     window.location.href = "/login"
   }
 }

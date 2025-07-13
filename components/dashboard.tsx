@@ -1,33 +1,40 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Calendar, TrendingUp, AlertCircle, DollarSign } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { useGetDashboardOverview } from "@/lib/dashbordService"
+import { combineDomainOfStackGroups } from "recharts/types/state/selectors/axisSelectors"
 
 export function Dashboard() {
+  const { data, isLoading, error, isError } = useGetDashboardOverview()
+  console.log("data dashboard", data)
+  if (isLoading) return <div>Carregando...</div>
+  if (isError) return <div>{error?.message}</div>
+
   const stats = [
     {
       title: "Total de Alunos",
-      value: "156",
+      value: data?.totalStudents,
       description: "+12% em relação ao mês passado",
       icon: Users,
       color: "text-blue-600",
     },
     {
       title: "Receita Mensal",
-      value: "R$ 18.450",
+      value: data?.monthlyRevenue,
       description: "+8% em relação ao mês passado",
       icon: DollarSign,
       color: "text-green-600",
     },
     {
       title: "Aulas Agendadas",
-      value: "89",
+      value: data?.scheduledClasses,
       description: "Para esta semana",
       icon: Calendar,
       color: "text-purple-600",
     },
     {
       title: "Frequência Média",
-      value: "78%",
+        value: data?.averageAttendance,
       description: "Últimos 30 dias",
       icon: TrendingUp,
       color: "text-orange-600",
