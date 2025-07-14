@@ -1,59 +1,79 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Calendar, TrendingUp, AlertCircle, DollarSign } from "lucide-react"
+import { Users, Calendar, TrendingUp, AlertCircle, DollarSign, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { useGetDashboardOverview } from "@/lib/dashbordService"
-import { combineDomainOfStackGroups } from "recharts/types/state/selectors/axisSelectors"
+import { useGetDashboardOverview, useGetRecentActivities, useGetUpcomingPayments } from "@/lib/dashbordService"
 
 export function Dashboard() {
-  const { data, isLoading, error, isError } = useGetDashboardOverview()
-  console.log("data dashboard", data)
-  if (isLoading) return <div>Carregando...</div>
-  if (isError) return <div>{error?.message}</div>
+  const { data: overviewData, isLoading: overviewLoading, error: overviewError, isError: overviewIsError } = useGetDashboardOverview()
+  const { data: recentActivitiesData, isLoading: activitiesLoading } = useGetRecentActivities(5)
+  const { data: upcomingPaymentsData, isLoading: paymentsLoading } = useGetUpcomingPayments(5)
+
+  if (overviewLoading) return (
+    <div className="flex justify-center items-center h-64">
+      <Loader2 className="h-8 w-8 animate-spin" />
+    </div>
+  )
+  
+  if (overviewIsError) return <div>Erro ao carregar dados: {overviewError?.message}</div>
 
   const stats = [
     {
       title: "Total de Alunos",
-      value: data?.students.total,
+      value: overviewData?.students.total || 0,
       description: "+12% em relação ao mês passado",
       icon: Users,
       color: "text-blue-600",
     },
     {
       title: "Receita Mensal",
-      value: `R$ ${Number(data?.revenue.total || 0).toFixed(2)}`,
+      value: `R$ ${Number(overviewData?.revenue.total || 0).toFixed(2)}`,
       description: "+8% em relação ao mês passado",
       icon: DollarSign,
       color: "text-green-600",
     },
     {
       title: "Aulas Agendadas",
-      value: data?.appointments.thisWeek,
+      value: overviewData?.appointments.thisWeek || 0,
       description: "Para esta semana",
       icon: Calendar,
       color: "text-purple-600",
     },
     {
       title: "Frequência Média",
-      value: `${(data?.appointments.thisWeek / data?.students.active || 0).toFixed(1)} aulas/aluno`,
+      value: `${((overviewData?.appointments.thisWeek || 0) / Math.max(overviewData?.students.active || 1, 1)).toFixed(1)} aulas/aluno`,
       description: "Com base em alunos ativos",
       icon: TrendingUp,
       color: "text-orange-600",
     },
   ]
-  
 
-  const recentActivities = [
-    { student: "Maria Silva", action: "Pagamento realizado", time: "2 horas atrás", type: "payment" },
-    { student: "João Santos", action: "Aula agendada", time: "4 horas atrás", type: "schedule" },
-    { student: "Ana Costa", action: "Novo cadastro", time: "1 dia atrás", type: "new" },
-    { student: "Pedro Lima", action: "Mensalidade vencida", time: "2 dias atrás", type: "overdue" },
-  ]
+  // Função para formatar tempo relativo
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+    
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} min atrás`
+    } else if (diffInMinutes < 1440) { // 24 horas
+      const hours = Math.floor(diffInMinutes / 60)
+      return `${hours} hora${hours > 1 ? 's' : ''} atrás`
+    } else {
+      const days = Math.floor(diffInMinutes / 1440)
+      return `${days} dia${days > 1 ? 's' : ''} atrás`
+    }
+  }
 
-  const upcomingPayments = [
-    { student: "Carlos Oliveira", amount: "R$ 120,00", dueDate: "Hoje" },
-    { student: "Lucia Ferreira", amount: "R$ 150,00", dueDate: "Amanhã" },
-    { student: "Roberto Silva", amount: "R$ 100,00", dueDate: "Em 2 dias" },
-  ]
+  // Função para mapear tipo de atividade para badge
+  const getActivityBadgeVariant = (type: string, status: string) => {
+    if (type === "payment") {
+      return status === "PAID" ? "default" : status === "OVERDUE" ? "destructive" : "secondary"
+    } else if (type === "appointment") {
+      return "secondary"
+    } else {
+      return "outline"
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -87,27 +107,33 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentActivities.map((activity, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">{activity.student}</p>
-                    <p className="text-sm text-muted-foreground">{activity.action}</p>
-                  </div>
-                  <div className="text-right">
-                    <Badge
-                      variant={
-                        activity.type === "overdue"
-                          ? "destructive"
-                          : activity.type === "payment"
-                            ? "default"
-                            : "secondary"
-                      }
-                    >
-                      {activity.time}
-                    </Badge>
-                  </div>
+              {activitiesLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
-              ))}
+              ) : recentActivitiesData && recentActivitiesData.length > 0 ? (
+                recentActivitiesData.map((activity, index) => (
+                  <div key={activity.id || index} className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">
+                        {activity.description.split(' - ')[0]}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {activity.description}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant={getActivityBadgeVariant(activity.type, activity.status)}>
+                        {formatRelativeTime(activity.createdAt)}
+                      </Badge>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p>Nenhuma atividade recente encontrada</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -123,15 +149,29 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {upcomingPayments.map((payment, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">{payment.student}</p>
-                    <p className="text-sm text-muted-foreground">{payment.amount}</p>
-                  </div>
-                  <Badge variant={payment.dueDate === "Hoje" ? "destructive" : "outline"}>{payment.dueDate}</Badge>
+              {paymentsLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
-              ))}
+              ) : upcomingPaymentsData && upcomingPaymentsData.length > 0 ? (
+                upcomingPaymentsData.map((payment, index) => (
+                  <div key={payment.id || index} className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{payment.student}</p>
+                      <p className="text-sm text-muted-foreground">
+                        R$ {payment.amount.toFixed(2)}
+                      </p>
+                    </div>
+                    <Badge variant={payment.diffDays === 0 ? "destructive" : payment.diffDays === 1 ? "secondary" : "outline"}>
+                      {payment.dueDateText}
+                    </Badge>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p>Nenhum pagamento próximo encontrado</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
