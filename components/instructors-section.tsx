@@ -83,7 +83,7 @@ console.log("instr",instructors)
     // Se já é uma URL completa, retorna como está
     if (avatar.startsWith('http')) return avatar
     // Se é um caminho relativo, adiciona a base URL do backend
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/uploads/${avatar}`
+    return `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${avatar}`
   }
 
   if (error) {
@@ -184,7 +184,7 @@ console.log("instr",instructors)
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={ !instructor?.avatar ? (getAvatarUrl(instructor.avatar) || undefined) : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/uploads/${instructor?.avatar}`} alt={instructor.name} />
+                        <AvatarImage src={ !instructor?.avatar ? (getAvatarUrl(instructor.avatar) || undefined) : `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${instructor?.avatar}`} alt={instructor.name} />
                         <AvatarFallback>
                           {instructor.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                         </AvatarFallback>
@@ -290,7 +290,7 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
     if (instructor?.avatar) {
       const avatarUrl = instructor.avatar.startsWith('http') 
         ? instructor.avatar 
-        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/uploads/${instructor.avatar}`
+        : `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${instructor.avatar}`
       setAvatarPreview(avatarUrl)
     }
   }, [instructor?.avatar])
@@ -320,7 +320,7 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
     formData.append("file", file)
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/upload/single`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/api/upload/single`, {
         method: "POST",
         body: formData,
         headers: {
@@ -407,7 +407,7 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
   const getAvatarUrl = (avatar?: string) => {
     if (!avatar) return null
     if (avatar.startsWith('http')) return avatar
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/uploads/${avatar}`
+    return `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${avatar}`
   }
 
   return (
