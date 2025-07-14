@@ -3,6 +3,7 @@ export interface User {
   name: string
   email: string
   role: "ADMIN" | "MANAGER" | "INSTRUCTOR"
+  avatar?: string
 }
 
 export interface AuthState {

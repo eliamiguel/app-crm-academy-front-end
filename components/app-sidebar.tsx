@@ -3,6 +3,7 @@
 import { Calendar, CreditCard, Dumbbell, Home, TrendingUp, Users, Bell, Activity, LogOut, GraduationCap } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 import { logout } from "@/lib/auth"
+import { getAuthState } from "@/lib/auth"
 
 import {
   Sidebar,
@@ -71,14 +72,27 @@ export function AppSidebar() {
     router.push(path)
   }
 
+  const authState = getAuthState()
+  const user = authState.user
+  console.log(user)
+
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2">
-          <Activity className="h-8 w-8 text-blue-600" />
+          {/* Avatar e nome do usuário logado */}
+          <img
+            src={
+              user?.avatar
+                ? `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${user.avatar}`
+                : "/placeholder-user.jpg"
+            }
+            alt={user?.name || "Avatar"}
+            className="w-14 h-14 rounded-full object-cover border"
+          />
           <div>
-            <h1 className="text-xl font-bold">GymCRM</h1>
-            <p className="text-sm text-muted-foreground">Academia & Personal</p>
+            <p className="text-sm font-bold">{user?.name|| "Usuário"}</p >
+            <p className="text-xs text-muted-foreground">{user?.role}</p>
           </div>
         </div>
       </SidebarHeader>

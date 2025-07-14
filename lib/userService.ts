@@ -13,6 +13,7 @@ export function useGetInstructors() {
     queryKey: ["instructors"],
     queryFn: async () => {
       const { data } = await api.get("/users/instructors")
+      console.log(data)
       return data as User[]
     },
   })

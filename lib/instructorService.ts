@@ -9,6 +9,7 @@ export interface Instructor {
   role: "ADMIN" | "MANAGER" | "INSTRUCTOR"
   createdAt: string
   updatedAt: string
+  avatar?: string
 }
 
 export interface CreateInstructorData {
@@ -16,6 +17,7 @@ export interface CreateInstructorData {
   email: string
   password: string
   role: "ADMIN" | "MANAGER" | "INSTRUCTOR"
+  avatar?: string
 }
 
 export interface UpdateInstructorData {
@@ -23,6 +25,7 @@ export interface UpdateInstructorData {
   email?: string
   password?: string
   role?: "ADMIN" | "MANAGER" | "INSTRUCTOR"
+  avatar?: string
 }
 
 // Get all instructors
@@ -31,6 +34,7 @@ export function useGetInstructors() {
     queryKey: ["instructors"],
     queryFn: async () => {
       const { data } = await api.get("/users/instructors")
+      console.log("esds", data)
       return data as Instructor[]
     },
   })

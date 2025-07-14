@@ -1,8 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, Edit, Trash2, Mail, Shield, Users, BookOpen, Calendar, ChevronRight, Eye } from "lucide-react"
-import Link from "next/link"
+import { useState, useEffect } from "react"
+import { Plus, Edit, Trash2, Mail, Shield, Users, BookOpen, Upload, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,49 +12,44 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { toast } from "sonner"
 import { useGetInstructors, useCreateInstructor, useUpdateInstructor, useDeleteInstructor, CreateInstructorData, UpdateInstructorData, Instructor } from "@/lib/instructorService"
+import { getAuthState } from "@/lib/auth"
+
 
 export default function InstructorsSection() {
   const [openCreateDialog, setOpenCreateDialog] = useState(false)
   const [openEditDialog, setOpenEditDialog] = useState(false)
   const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [isLoadingAll, setIsLoadingAll] = useState(false)
 
+  
   const { data: instructors, isLoading, error } = useGetInstructors()
   const createInstructor = useCreateInstructor()
   const updateInstructor = useUpdateInstructor()
   const deleteInstructor = useDeleteInstructor()
 
-  // Debug: Vamos mostrar os dados no console
-  console.log("Dados dos instrutores:", instructors, "Loading:", isLoading, "Error:", error)
-
   const filteredInstructors = instructors?.filter(instructor =>
     instructor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     instructor.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
-
+console.log("instr",instructors)
   const handleCreateInstructor = async (data: CreateInstructorData) => {
-    setIsLoadingAll(true)
     await createInstructor.mutateAsync(data)
     setOpenCreateDialog(false)
-    setIsLoadingAll(false)
   }
 
   const handleUpdateInstructor = async (data: UpdateInstructorData) => {
-    setIsLoadingAll(true)
     if (selectedInstructor) {
       await updateInstructor.mutateAsync({ id: selectedInstructor.id, data })
       setOpenEditDialog(false)
       setSelectedInstructor(null)
-      setIsLoadingAll(false)
     }
   }
 
   const handleDeleteInstructor = async (id: string) => {
-      setIsLoadingAll(true)
-      await deleteInstructor.mutateAsync(id)
-    setIsLoadingAll(false)
+    await deleteInstructor.mutateAsync(id)
   }
 
   const getRoleColor = (role: string) => {
@@ -82,6 +76,14 @@ export default function InstructorsSection() {
       default:
         return <Users className="h-3 w-3" />
     }
+  }
+
+  const getAvatarUrl = (avatar?: string) => {
+    if (!avatar) return null
+    // Se já é uma URL completa, retorna como está
+    if (avatar.startsWith('http')) return avatar
+    // Se é um caminho relativo, adiciona a base URL do backend
+    return `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${avatar}`
   }
 
   if (error) {
@@ -140,11 +142,11 @@ export default function InstructorsSection() {
               Novo Instrutor
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Criar Novo Instrutor</DialogTitle>
             </DialogHeader>
-            <InstructorForm onSubmit={handleCreateInstructor as any} />
+            <InstructorForm onSubmit={handleCreateInstructor as (data: CreateInstructorData | UpdateInstructorData) => Promise<void>} />
           </DialogContent>
         </Dialog>
       </div>
@@ -169,16 +171,29 @@ export default function InstructorsSection() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
+                <TableHead>Instrutor</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Função</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
+              
               {filteredInstructors?.map((instructor) => (
                 <TableRow key={instructor.id}>
-                  <TableCell className="font-medium">{instructor.name}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={ !instructor?.avatar ? (getAvatarUrl(instructor.avatar) || undefined) : `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${instructor?.avatar}`} alt={instructor.name} />
+                        <AvatarFallback>
+                          {instructor.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">{instructor.name}</div>
+                      </div>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
@@ -193,7 +208,6 @@ export default function InstructorsSection() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
-                      
                       <Button
                         variant="outline"
                         size="sm"
@@ -235,7 +249,7 @@ export default function InstructorsSection() {
       </Card>
 
       <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar Instrutor</DialogTitle>
           </DialogHeader>
@@ -254,48 +268,175 @@ export default function InstructorsSection() {
 
 interface InstructorFormProps {
   instructor?: Instructor
-  onSubmit: (data: CreateInstructorData | UpdateInstructorData) => void
+  onSubmit: (data: CreateInstructorData | UpdateInstructorData) => Promise<void>
   isEditing?: boolean
 }
 
 function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorFormProps) {
-  const [isLoadingAll, setIsLoadingAll] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const [formData, setFormData] = useState({
     name: instructor?.name || "",
     email: instructor?.email || "",
     password: "",
-    role: instructor?.role || "INSTRUCTOR"
+    role: instructor?.role || "INSTRUCTOR",
+    avatar: instructor?.avatar || ""
   })
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (isEditing) {
-      const updateData: UpdateInstructorData = {
-        name: formData.name,
-        email: formData.email,
-        role: formData.role as "ADMIN" | "MANAGER" | "INSTRUCTOR"
-      }
-      
-      if (formData.password) {
-        updateData.password = formData.password
-      }
-      
-      onSubmit(updateData)
-    } else {
-      const createData: CreateInstructorData = {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        role: formData.role as "ADMIN" | "MANAGER" | "INSTRUCTOR"
-      }
-      
-      onSubmit(createData)
+  // Configurar preview inicial se estiver editando
+  useEffect(() => {
+    if (instructor?.avatar) {
+      const avatarUrl = instructor.avatar.startsWith('http') 
+        ? instructor.avatar 
+        : `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${instructor.avatar}`
+      setAvatarPreview(avatarUrl)
     }
+  }, [instructor?.avatar])
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validar tipo de arquivo
+      if (!file.type.startsWith('image/')) {
+        toast.error("Por favor, selecione apenas arquivos de imagem")
+        return
+      }
+      
+      // Validar tamanho (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("O arquivo deve ter no máximo 5MB")
+        return
+      }
+
+      setAvatarFile(file)
+      setAvatarPreview(URL.createObjectURL(file))
+    }
+  }
+
+  const uploadAvatar = async (file: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append("file", file)
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/api/upload/single`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Erro no upload")
+      }
+
+      const data = await response.json()
+      
+      if (!data.success) {
+        throw new Error(data.message || "Erro no upload")
+      }
+
+      return data.file.path // Retorna o caminho relativo do arquivo
+    } catch (error) {
+      console.error("Erro no upload:", error)
+      throw error
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+
+    try {
+      let avatarPath = formData.avatar
+
+      // Se há um novo arquivo de avatar, fazer upload
+      if (avatarFile) {
+        setIsUploading(true)
+        avatarPath = await uploadAvatar(avatarFile)
+        setIsUploading(false)
+      }
+
+      if (isEditing) {
+        const updateData: UpdateInstructorData = {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role as "ADMIN" | "MANAGER" | "INSTRUCTOR",
+          avatar: avatarPath,
+        }
+        
+        // Só incluir senha se foi fornecida
+        if (formData.password.trim()) {
+          updateData.password = formData.password
+        }
+        
+        await onSubmit(updateData)
+      } else {
+        const createData: CreateInstructorData = {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: formData.role as "ADMIN" | "MANAGER" | "INSTRUCTOR",
+          avatar: avatarPath,
+        }
+        
+        await onSubmit(createData)
+      }
+
+      // Limpar formulário após sucesso
+      setFormData({
+        name: "",
+        email: "",
+        password: "",
+        role: "INSTRUCTOR",
+        avatar: ""
+      })
+      setAvatarFile(null)
+      setAvatarPreview(null)
+    } catch (error) {
+      console.error("Erro ao salvar instrutor:", error)
+      toast.error("Erro ao salvar instrutor")
+    } finally {
+      setIsLoading(false)
+      setIsUploading(false)
+    }
+  }
+
+  const getAvatarUrl = (avatar?: string) => {
+    if (!avatar) return null
+    if (avatar.startsWith('http')) return avatar
+    return `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${avatar}`
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Avatar Upload */}
+      <div className="space-y-2">
+        <Label>Foto de Perfil</Label>
+        <div className="flex items-center space-x-4">
+          <Avatar className="h-20 w-20">
+            <AvatarImage src={avatarPreview || getAvatarUrl(formData.avatar) || undefined} alt="Avatar" />
+            <AvatarFallback>
+              {formData.name ? formData.name.split(' ').map(n => n[0]).join('').toUpperCase() : <User className="h-8 w-8" />}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              disabled={isUploading}
+              className="cursor-pointer"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              PNG, JPG, GIF até 5MB
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="name">Nome</Label>
         <Input
@@ -303,6 +444,7 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
+          disabled={isLoading}
         />
       </div>
 
@@ -314,6 +456,7 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           required
+          disabled={isLoading}
         />
       </div>
 
@@ -327,12 +470,17 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
           value={formData.password}
           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
           required={!isEditing}
+          disabled={isLoading}
         />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="role">Função</Label>
-        <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as "ADMIN" | "MANAGER" | "INSTRUCTOR" })}>
+        <Select 
+          value={formData.role} 
+          onValueChange={(value) => setFormData({ ...formData, role: value as "ADMIN" | "MANAGER" | "INSTRUCTOR" })}
+          disabled={isLoading}
+        >
           <SelectTrigger>
             <SelectValue placeholder="Selecione a função" />
           </SelectTrigger>
@@ -344,15 +492,18 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
         </Select>
       </div>
 
-      <Button type="submit" className="w-full" disabled={isLoadingAll} onClick={() => {
-        if (isEditing) {
-          setIsLoadingAll(true)
-        } else {
-          setIsLoadingAll(true)
-        }
-      }}>
-        {isLoadingAll ? "Carregando..." : isEditing ? "Atualizar" : "Criar"} Instrutor
+      <Button type="submit" className="w-full" disabled={isLoading || isUploading}>
+        {isUploading ? (
+          <>
+            <Upload className="h-4 w-4 mr-2 animate-spin" />
+            Enviando imagem...
+          </>
+        ) : isLoading ? (
+          "Salvando..."
+        ) : (
+          `${isEditing ? "Atualizar" : "Criar"} Instrutor`
+        )}
       </Button>
     </form>
   )
-} 
+}
