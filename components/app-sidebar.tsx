@@ -1,6 +1,6 @@
 "use client"
 
-import { Calendar, CreditCard, Dumbbell, Home, TrendingUp, Users, Bell, Activity, LogOut } from "lucide-react"
+import { Calendar, CreditCard, Dumbbell, Home, TrendingUp, Users, Bell, Activity, LogOut, GraduationCap } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 import { logout } from "@/lib/auth"
 
@@ -26,6 +26,11 @@ const menuItems = [
     title: "Alunos",
     icon: Users,
     path: "/students",
+  },
+  {
+    title: "Instrutores",
+    icon: GraduationCap,
+    path: "/instructors",
   },
   {
     title: "Pagamentos",
