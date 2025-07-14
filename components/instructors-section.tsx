@@ -20,6 +20,7 @@ export default function InstructorsSection() {
   const [openEditDialog, setOpenEditDialog] = useState(false)
   const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [isLoadingAll, setIsLoadingAll] = useState(false)
 
   const { data: instructors, isLoading, error } = useGetInstructors()
   const createInstructor = useCreateInstructor()
@@ -35,20 +36,26 @@ export default function InstructorsSection() {
   )
 
   const handleCreateInstructor = async (data: CreateInstructorData) => {
+    setIsLoadingAll(true)
     await createInstructor.mutateAsync(data)
     setOpenCreateDialog(false)
+    setIsLoadingAll(false)
   }
 
   const handleUpdateInstructor = async (data: UpdateInstructorData) => {
+    setIsLoadingAll(true)
     if (selectedInstructor) {
       await updateInstructor.mutateAsync({ id: selectedInstructor.id, data })
       setOpenEditDialog(false)
       setSelectedInstructor(null)
+      setIsLoadingAll(false)
     }
   }
 
   const handleDeleteInstructor = async (id: string) => {
-    await deleteInstructor.mutateAsync(id)
+      setIsLoadingAll(true)
+      await deleteInstructor.mutateAsync(id)
+    setIsLoadingAll(false)
   }
 
   const getRoleColor = (role: string) => {
@@ -252,6 +259,7 @@ interface InstructorFormProps {
 }
 
 function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorFormProps) {
+  const [isLoadingAll, setIsLoadingAll] = useState(false)
   const [formData, setFormData] = useState({
     name: instructor?.name || "",
     email: instructor?.email || "",
@@ -336,8 +344,14 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
         </Select>
       </div>
 
-      <Button type="submit" className="w-full">
-        {isEditing ? "Atualizar" : "Criar"} Instrutor
+      <Button type="submit" className="w-full" disabled={isLoadingAll} onClick={() => {
+        if (isEditing) {
+          setIsLoadingAll(true)
+        } else {
+          setIsLoadingAll(true)
+        }
+      }}>
+        {isLoadingAll ? "Carregando..." : isEditing ? "Atualizar" : "Criar"} Instrutor
       </Button>
     </form>
   )

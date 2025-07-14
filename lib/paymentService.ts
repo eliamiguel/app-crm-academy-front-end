@@ -102,6 +102,11 @@ export const paymentService = {
   async markOverdue() {
     const response = await api.post<{ count: number }>("/payments/mark-overdue")
     return response.data
+  },
+
+  async sendChargeEmail(id: string) {
+    const response = await api.patch<{ message: string }>(`/payments/${id}/send-charge-email`)
+    return response.data
   }
 }
 

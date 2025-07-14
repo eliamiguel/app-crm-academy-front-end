@@ -25,7 +25,8 @@ import {
   useDeletePayment, 
   usePaymentStats,
   useGetPaymentById,
-  type IPayment 
+  type IPayment,
+  paymentService
 } from "@/lib/paymentService"
 import { useGetStudents } from "@/lib/studentsService"
 
@@ -186,8 +187,12 @@ export function PaymentsSection() {
   }
 
   const handleSendReminder = async (payment: IPayment) => {
-    // Implementar envio de lembrete/cobrança
-    toast.info(`Lembrete enviado para ${payment.student.name}`)
+    try {
+      await paymentService.sendChargeEmail(payment.id)
+      toast.success(`E-mail de cobrança enviado para ${payment.student.name}`)
+    } catch (error) {
+      toast.error("Erro ao enviar e-mail de cobrança")
+    }
   }
 
   const resetCreateForm = () => {
