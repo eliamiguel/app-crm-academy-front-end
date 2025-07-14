@@ -29,6 +29,7 @@ import {
   paymentService
 } from "@/lib/paymentService"
 import { useGetStudents } from "@/lib/studentsService"
+import { set } from "date-fns"
 
 export function PaymentsSection() {
   const [filterStatus, setFilterStatus] = useState("all")
@@ -39,7 +40,7 @@ export function PaymentsSection() {
   const [selectedPayment, setSelectedPayment] = useState<IPayment | null>(null)
   const [isRegistering, setIsRegistering] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
-
+const [isLoading, setIsLoading] = useState(false);
   const [createFormData, setCreateFormData] = useState({
     studentId: "",
     amount: "",
@@ -188,10 +189,13 @@ export function PaymentsSection() {
 
   const handleSendReminder = async (payment: IPayment) => {
     try {
+      setIsLoading(true)
       await paymentService.sendChargeEmail(payment.id)
       toast.success(`E-mail de cobrança enviado para ${payment.student.name}`)
+      setIsLoading(false)
     } catch (error) {
       toast.error("Erro ao enviar e-mail de cobrança")
+      setIsLoading(false)
     }
   }
 
@@ -449,7 +453,7 @@ export function PaymentsSection() {
                       )}
                       {payment.status === "OVERDUE" && (
                         <Button size="sm" variant="destructive" onClick={() => handleSendReminder(payment)}>
-                          Cobrar
+                          {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> :"Cobrar"}
                         </Button>
                       )}
                       <Button variant="outline" size="sm" onClick={() => openDetailsModal(payment)}>

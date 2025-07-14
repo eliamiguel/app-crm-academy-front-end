@@ -79,21 +79,15 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
-          {/* Avatar e nome do usuário logado */}
-          <img
-            src={
-              user?.avatar
-                ? `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${user.avatar}`
-                : "/placeholder-user.jpg"
-            }
-            alt={user?.name || "Avatar"}
-            className="w-14 h-14 rounded-full object-cover border"
-          />
-          <div>
-            <p className="text-sm font-bold">{user?.name|| "Usuário"}</p >
-            <p className="text-xs text-muted-foreground">{user?.role}</p>
+      <div className="text-center">
+          <div className="flex justify-center">
+            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center">
+              <Activity className="w-8 h-8 text-white" />
+            </div>
           </div>
+          <h2 className="mt-3 text-1xl font-extrabold text-gray-900">
+            Gym CRM Academy
+          </h2>
         </div>
       </SidebarHeader>
       <SidebarContent>

@@ -970,7 +970,8 @@ export function ProgressSection() {
           <DialogHeader>
             <DialogTitle>Comparação de Evolução - {compareRecord1?.student.name}</DialogTitle>
             <DialogDescription>
-              Compare os registros de evolução do aluno
+              Compare os registros de evolução do aluno.
+              Só é possivel cisualisar a compração caso o aluno tenha dois refirto de evolução no sistema.
             </DialogDescription>
           </DialogHeader>
           {compareRecord1 && compareRecord2 && (
