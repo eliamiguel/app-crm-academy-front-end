@@ -54,7 +54,12 @@ export function useCreateInstructor() {
       toast.success("Instrutor criado com sucesso!")
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Erro ao criar instrutor")
+      console.error("Erro ao criar instrutor:", error)
+      if (error.response?.status === 403) {
+        toast.error("Você não tem permissão para criar instrutores. Apenas administradores podem realizar esta ação.")
+      } else {
+        toast.error(error.response?.data?.message || "Erro ao criar instrutor")
+      }
     },
   })
 }
@@ -73,7 +78,12 @@ export function useUpdateInstructor() {
       toast.success("Instrutor atualizado com sucesso!")
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Erro ao atualizar instrutor")
+      console.error("Erro ao atualizar instrutor:", error)
+      if (error.response?.status === 403) {
+        toast.error("Você não tem permissão para atualizar instrutores. Apenas administradores podem realizar esta ação.")
+      } else {
+        toast.error(error.response?.data?.message || "Erro ao atualizar instrutor")
+      }
     },
   })
 }
@@ -92,7 +102,12 @@ export function useDeleteInstructor() {
       toast.success("Instrutor removido com sucesso!")
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Erro ao remover instrutor")
+      console.error("Erro ao remover instrutor:", error)
+      if (error.response?.status === 403) {
+        toast.error("Você não tem permissão para remover instrutores. Apenas administradores podem realizar esta ação.")
+      } else {
+        toast.error(error.response?.data?.message || "Erro ao remover instrutor")
+      }
     },
   })
 }

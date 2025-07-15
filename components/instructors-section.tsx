@@ -24,6 +24,8 @@ export default function InstructorsSection() {
   const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
 
+  const authState = getAuthState()
+  const isAdmin = authState.user?.role === "ADMIN"
   
   const { data: instructors, isLoading, error } = useGetInstructors()
   const createInstructor = useCreateInstructor()
@@ -36,15 +38,23 @@ export default function InstructorsSection() {
   )
 console.log("instr",instructors)
   const handleCreateInstructor = async (data: CreateInstructorData) => {
-    await createInstructor.mutateAsync(data)
-    setOpenCreateDialog(false)
+    try {
+      await createInstructor.mutateAsync(data)
+      setOpenCreateDialog(false)
+    } catch (error) {
+      console.error("Erro ao criar instrutor:", error)
+    }
   }
 
   const handleUpdateInstructor = async (data: UpdateInstructorData) => {
     if (selectedInstructor) {
-      await updateInstructor.mutateAsync({ id: selectedInstructor.id, data })
-      setOpenEditDialog(false)
-      setSelectedInstructor(null)
+      try {
+        await updateInstructor.mutateAsync({ id: selectedInstructor.id, data })
+        setOpenEditDialog(false)
+        setSelectedInstructor(null)
+      } catch (error) {
+        console.error("Erro ao atualizar instrutor:", error)
+      }
     }
   }
 
@@ -83,7 +93,7 @@ console.log("instr",instructors)
     // Se já é uma URL completa, retorna como está
     if (avatar.startsWith('http')) return avatar
     // Se é um caminho relativo, adiciona a base URL do backend
-    return `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${avatar}`
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL?.replace('/api', '') || 'http://localhost:8000'}/uploads/${avatar}`
   }
 
   if (error) {
@@ -135,20 +145,26 @@ console.log("instr",instructors)
           <h2 className="text-2xl font-bold tracking-tight">Instrutores</h2>
           <p className="text-muted-foreground">Gerencie os instrutores da academia</p>
         </div>
-        <Dialog open={openCreateDialog} onOpenChange={setOpenCreateDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Instrutor
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Criar Novo Instrutor</DialogTitle>
-            </DialogHeader>
-            <InstructorForm onSubmit={handleCreateInstructor as (data: CreateInstructorData | UpdateInstructorData) => Promise<void>} />
-          </DialogContent>
-        </Dialog>
+        {isAdmin ? (
+          <Dialog open={openCreateDialog} onOpenChange={setOpenCreateDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Instrutor/Usuário
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Criar Novo Instrutor/usuario</DialogTitle>
+              </DialogHeader>
+              <InstructorForm onSubmit={handleCreateInstructor as (data: CreateInstructorData | UpdateInstructorData) => Promise<void>} />
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <div className="text-sm text-muted-foreground">
+            Apenas administradores podem criar instrutores
+          </div>
+        )}
       </div>
 
       <div className="flex items-center space-x-2">
@@ -184,7 +200,7 @@ console.log("instr",instructors)
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={ !instructor?.avatar ? (getAvatarUrl(instructor.avatar) || undefined) : `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${instructor?.avatar}`} alt={instructor.name} />
+                        <AvatarImage src={instructor?.avatar ? `${process.env.NEXT_PUBLIC_BACKEND_URL?.replace('/api', '') || 'http://localhost:8000'}/uploads/${instructor.avatar}` : undefined} alt={instructor.name} />
                         <AvatarFallback>
                           {instructor.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                         </AvatarFallback>
@@ -207,39 +223,43 @@ console.log("instr",instructors)
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedInstructor(instructor)
-                          setOpenEditDialog(true)
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja remover {instructor.name}? Esta ação não pode ser desfeita.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteInstructor(instructor.id)}>
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                    {isAdmin ? (
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedInstructor(instructor)
+                            setOpenEditDialog(true)
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja remover {instructor.name}? Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteInstructor(instructor.id)}>
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Apenas administradores</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -290,7 +310,7 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
     if (instructor?.avatar) {
       const avatarUrl = instructor.avatar.startsWith('http') 
         ? instructor.avatar 
-        : `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${instructor.avatar}`
+        : `${process.env.NEXT_PUBLIC_BACKEND_URL?.replace('/api', '') || 'http://localhost:8000'}/uploads/${instructor.avatar}`
       setAvatarPreview(avatarUrl)
     }
   }, [instructor?.avatar])
@@ -320,7 +340,8 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
     formData.append("file", file)
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/api/upload/single`, {
+      console.log("Iniciando upload do arquivo:", file.name)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL?.replace('/api', '') || 'http://localhost:8000'}/api/upload/single`, {
         method: "POST",
         body: formData,
         headers: {
@@ -328,16 +349,22 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
         },
       })
 
+      console.log("Resposta do upload:", response.status, response.statusText)
+
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error("Erro na resposta:", errorText)
         throw new Error("Erro no upload")
       }
 
       const data = await response.json()
+      console.log("Dados do upload:", data)
       
       if (!data.success) {
         throw new Error(data.message || "Erro no upload")
       }
 
+      console.log("Upload bem-sucedido, caminho:", data.file.path)
       return data.file.path // Retorna o caminho relativo do arquivo
     } catch (error) {
       console.error("Erro no upload:", error)
@@ -355,7 +382,9 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
       // Se há um novo arquivo de avatar, fazer upload
       if (avatarFile) {
         setIsUploading(true)
+        console.log("Fazendo upload do avatar...")
         avatarPath = await uploadAvatar(avatarFile)
+        console.log("Avatar enviado com sucesso:", avatarPath)
         setIsUploading(false)
       }
 
@@ -372,6 +401,7 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
           updateData.password = formData.password
         }
         
+        console.log("Dados de atualização:", updateData)
         await onSubmit(updateData)
       } else {
         const createData: CreateInstructorData = {
@@ -382,6 +412,7 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
           avatar: avatarPath,
         }
         
+        console.log("Dados de criação:", createData)
         await onSubmit(createData)
       }
 
@@ -407,7 +438,7 @@ function InstructorForm({ instructor, onSubmit, isEditing = false }: InstructorF
   const getAvatarUrl = (avatar?: string) => {
     if (!avatar) return null
     if (avatar.startsWith('http')) return avatar
-    return `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${avatar}`
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL?.replace('/api', '') || 'http://localhost:8000'}/uploads/${avatar}`
   }
 
   return (

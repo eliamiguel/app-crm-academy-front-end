@@ -47,7 +47,7 @@ export function AppHeader() {
           <img
             src={
               user?.avatar
-                ? `${process.env.NEXT_PUBLIC_API_URL || 'https://app-crm-academy-back.onrender.com'}/uploads/${user.avatar}`
+                ? `${process.env.NEXT_PUBLIC_BACKEND_URL?.replace('/api', '') || 'http://localhost:8000'}/uploads/${user.avatar}`
                 : "/placeholder-user.jpg"
             }
             alt={user?.name || "Avatar"}
