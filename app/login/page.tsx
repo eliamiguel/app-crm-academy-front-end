@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
-import { redirectIfAuthenticated, saveAuthData } from "@/lib/auth"
+import { redirectIfAuthenticated, saveAuthData, getAuthState } from "@/lib/auth"
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -58,7 +58,7 @@ export default function LoginPage() {
     setError("")
 
     try {
-        const response = await fetch(`https://app-crm-academy-back.onrender.com/api/auth/login`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://app-crm-academy-back.onrender.com/api'}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -71,6 +71,7 @@ export default function LoginPage() {
       if (!response.ok) {
         throw new Error(result.message || "Erro ao fazer login")
       }
+      
       saveAuthData(result.token, result.user)
 
       toast({
@@ -81,6 +82,7 @@ export default function LoginPage() {
       // Redirecionar para o dashboard
       router.push("/")
     } catch (err) {
+      console.error("❌ Erro no login:", err)
       setError(err instanceof Error ? err.message : "Erro interno do servidor")
     } finally {
       setIsLoading(false)

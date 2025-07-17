@@ -102,6 +102,6 @@ export const redirectIfAuthenticated = () => {
   const authState = getAuthState()
   
   if (authState.isAuthenticated && !isTokenExpired(authState.token!)) {
-    window.location.href = "/login"
+    window.location.href = "/"
   }
 }

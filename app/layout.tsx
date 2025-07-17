@@ -2,6 +2,7 @@
 
 import { Inter } from "next/font/google"
 import { usePathname } from "next/navigation"
+import { useEffect } from "react"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ReactQueryProvider } from "@/lib/react-query-provider"
@@ -9,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppHeader } from "@/components/app-header"
+import { redirectIfNotAuthenticated } from "@/lib/auth"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -19,6 +21,12 @@ export default function RootLayout({
 }) {
   const pathname = usePathname()
   const isLoginPage = pathname === "/login"
+
+  useEffect(() => {
+    if (!isLoginPage) {
+      redirectIfNotAuthenticated()
+    }
+  }, [isLoginPage])
 
   return (
     <html lang="pt-BR">

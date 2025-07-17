@@ -52,18 +52,20 @@ export function useGetAppointments(params?: {
     queryKey: ["appointments", params],
     queryFn: async () => {
       try {
+    
+        const token = localStorage.getItem("token")
+        
         const { data } = await api.get("/appointments", { params })
-        
-        
-        // Garantir que a resposta tenha a estrutura esperada
+    
+      
         if (!data || !data.appointments) {
-          console.warn("Estrutura da resposta inesperada:", data)
           return { appointments: [] }
         }
         
         return data
       } catch (error) {
-        console.error("Erro ao buscar agendamentos:", error)
+        console.error("❌ Erro ao buscar agendamentos:", error)
+       
         return { appointments: [] }
       }
     },
